@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -32,19 +33,21 @@ export class AuthService {
   ) {}
 
 
-    async registerAlumno(idUsuario: number, alumnoData: CreateAlumnoDto) {
-    idUsuario = idUsuario;
-
+  async registerAlumno(idUsuario: number, alumnoData: CreateAlumnoDto) {
     const user = await this.userRepo.findOne({
-      where: { idUsuario},
+      where: { idUsuario },
     });
+
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    if (user.habilitado == 'No') throw new BadRequestException('Usuario no vailidado')
+    if (user.habilitado === 'No') {
+      throw new BadRequestException('Usuario no validado');
+    }
 
     const existingAlumno = await this.alumnoRepo.findOne({
       where: { idAlumno: idUsuario },
     });
+
     if (existingAlumno) {
       throw new BadRequestException('Este usuario ya tiene datos de alumno cargados');
     }
@@ -57,6 +60,7 @@ export class AuthService {
       'tramite',
       'tipoTarjeta',
     ];
+
     for (const field of requiredAlumnoFields) {
       if (!alumnoData[field]) {
         throw new BadRequestException(`El campo ${field} del usuario tipo Alumno es obligatorio`);
@@ -68,6 +72,16 @@ export class AuthService {
       ...alumnoData,
     });
     await this.alumnoRepo.save(alumno);
+
+    // ⚠️ Asegurarse que se actualice y guarde
+    user.tipoUsuario = 'Alumno';
+
+    try {
+      await this.userRepo.save(user);
+    } catch (error) {
+      console.error('Error al guardar el usuario como alumno:', error);
+      throw new InternalServerErrorException('Error al actualizar el perfil del usuario');
+    }
 
     return { message: 'Datos de alumno guardados correctamente' };
   }
