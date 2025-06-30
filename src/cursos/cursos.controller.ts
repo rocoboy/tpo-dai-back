@@ -48,6 +48,7 @@ export class CursosController {
 
   // GET - Curso por ID (detalle completo)
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Obtener curso por ID (detalle completo)' })
   @ApiParam({ name: 'id', description: 'ID del curso' })
   @ApiResponse({ status: 200, description: 'Curso encontrado' })

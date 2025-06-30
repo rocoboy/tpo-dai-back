@@ -18,6 +18,7 @@ import { CreateAlumnoDto } from '../alumnos/dto/create-alumno.dto';
 import { MailService } from 'src/mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDTO } from './dto/login-dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -146,8 +147,6 @@ export class AuthService {
     };
   }
 
-
-
   async validate(dto: ValidateDTO) {
     const requiredFields = ['code', 'username', 'password'];
     for (const field of requiredFields) {
@@ -177,7 +176,6 @@ export class AuthService {
       throw new BadRequestException('El código ha vencido. Por favor, comuníquese con la administración para continuar el proceso.');
     }
 
-    // Buscar usuario por mail o nickname (username puede ser cualquiera de los dos)
     const user = await this.userRepo.findOne({
       where: [
         { mail: dto.username },
@@ -187,13 +185,14 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    // Además, verificar que el username coincida con el mail o nickname del usuario
     if (user.mail !== dto.username && user.nickname !== dto.username) {
       throw new BadRequestException('El usuario no coincide con el código proporcionado');
     }
 
+    const hashedPassword = await bcrypt.hash(dto.password, 10); // 🔐 Hasheo seguro
+
     user.habilitado = 'Si';
-    user.password = dto.password;
+    user.password = hashedPassword;
     await this.userRepo.save(user);
 
     record.used = true;
@@ -205,7 +204,6 @@ export class AuthService {
       tipoUsuario: user.tipoUsuario,
     };
   }
-  
 
   async recoverPassword(dto: RecoverPasswordDto) {
     console.log('📨 Iniciando recuperación para:', dto.mail);
@@ -256,46 +254,46 @@ export class AuthService {
     return { message: 'Código de reinicio enviado', code };
   }
 
-
   async resetPassword(dto: ResetPasswordDto) {
     const record = await this.loginRepo.findOne({
       where: { code: dto.code, used: false },
     });
-  
+
     if (!record) {
       throw new BadRequestException('El código ingresado no es válido.');
     }
-  
+
     if (record.expiration < new Date()) {
       throw new BadRequestException('El código ha vencido. Solicite uno nuevo para continuar.');
     }
-  
+
     const user = await this.userRepo.findOne({
       where: { mail: record.email, habilitado: 'Si' },
     });
-  
+
     if (!user) {
       throw new NotFoundException('No se encontró un usuario habilitado con ese email.');
     }
-  
+
     const invalidPasswordPattern = /[^a-zA-Z0-9!@#$%^&*()_+]/;
     if (invalidPasswordPattern.test(dto.newPassword)) {
       throw new BadRequestException('La contraseña contiene caracteres inválidos');
     }
-  
+
     if (dto.newPassword.length < 6) {
       throw new BadRequestException('La contraseña debe tener al menos 6 caracteres');
     }
-  
-    user.password = dto.newPassword;
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10); // 🔐 Encriptación segura
+    user.password = hashedPassword;
+
     await this.userRepo.save(user);
-  
+
     record.used = true;
     await this.loginRepo.save(record);
-  
+
     return { message: 'Contraseña actualizada correctamente' };
   }
-  
 
   async suggestAlias(baseAlias: string): Promise<string[]> {
     const suggestions: string[] = [];
@@ -317,8 +315,8 @@ export class AuthService {
 
     const user = await this.userRepo.findOne({
       where: [
-        { mail: dto.username, password: dto.password},
-        { nickname: dto.username, password: dto.password},
+        { mail: dto.username },
+        { nickname: dto.username },
       ],
     });
 
@@ -326,8 +324,16 @@ export class AuthService {
       throw new BadRequestException('Credenciales inválidas o usuario no validado');
     }
 
-    if(user.habilitado == 'No'){
-      throw new BadRequestException({validated: false,message: 'El correo utilizado corresponde a una cuenta no validada'})
+    if (user.habilitado === 'No') {
+      throw new BadRequestException({
+        validated: false,
+        message: 'El correo utilizado corresponde a una cuenta no validada',
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Credenciales inválidas o usuario no validado');
     }
 
     const payload = {
@@ -346,7 +352,6 @@ export class AuthService {
         nickname: user.nickname,
         tipoUsuario: user.tipoUsuario,
         mail: user.mail,
-
       },
     };
   }

@@ -120,11 +120,24 @@ export class CalificationService {
   }
 
   async getRatingsByRecipe(idReceta: string) {
-    return await this.calificacionRepo.find({
+    const calificaciones = await this.calificacionRepo.find({
       where: { receta: { idReceta }, autorizado: true },
       relations: ['usuario'],
     });
+
+    return calificaciones.map((c) => ({
+      idCalificacion: c.idCalificacion,
+      valor: c.valor,
+      comentario: c.comentario,
+      fecha: c.fecha,
+      usuario: {
+        idUsuario: c.usuario.idUsuario,
+        nickname: c.usuario.nickname,
+        mail: c.usuario.mail,
+      },
+    }));
   }
+
 
   async getAverageRating(idReceta: string) {
     const calificaciones = await this.calificacionRepo.find({
