@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inscripción Confirmada</title>
+  <style>
+    body {
+      background-color: #f9f9f9;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      border: 2px solid #5FC6C3;
+    }
+
+    .header {
+      background-color: #5FC6C3;
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .status-tag {
+      display: inline-block;
+      background-color: #5FC6C3;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    .content {
+      padding: 30px;
+      font-size: 16px;
+      color: #444;
+    }
+
+    .content strong {
+      color: #222;
+    }
+
+    .info-item {
+      margin: 6px 0;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #999;
+      padding: 15px;
+      background-color: #f0f0f0;
+    }
+
+    .highlight {
+      color: #ff4081;
+      font-weight: bold;
+    }
+
+    a.button {
+      display: inline-block;
+      margin-top: 20px;
+      background-color: #5FC6C3;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .spacer {
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      ¡Inscripción Confirmada!
+    </div>
+
+    <div class="content">
+      <div class="status-tag">CURSO CONFIRMADO</div>
+
+      <div class="spacer"></div>
+
+      <p>Hola <strong>{{nombreAlumno}}</strong>,</p>
+
+      <p>Te confirmamos tu inscripción al curso <span class="highlight">{{nombreCurso}}</span>.</p>
+
+      <div class="info-item">📍 <strong>Sede:</strong> {{nombreSede}}</div>
+      <div class="info-item">💻 <strong>Modalidad:</strong> {{modalidad}}</div>
+      <div class="info-item">📅 <strong>Fechas:</strong> {{fechaInicio}} al {{fechaFin}}</div>
+      <div class="info-item">🕒 <strong>Horario:</strong> {{horario}}</div>
+      <div class="info-item">💳 <strong>Medio de pago:</strong> {{medioPago}}</div>
+      <div class="info-item">💲 <strong>Precio final:</strong> ${{precioFinal}}</div>
+
+      <div class="spacer"></div>
+
+      <p><strong>Requisitos del curso:</strong><br />{{requisitos}}</p>
+
+      <div class="spacer"></div>
+      <p>Para más información, puedes visitar nuestra página web o contactarnos por correo electrónico.</p>
+    </div>
+
+    <div class="footer">
+      Gracias por elegirnos ❤<br />
+      Escuela de Cocina - Todos los derechos reservados
+    </div>
+  </div>
+</body>
+</html>
