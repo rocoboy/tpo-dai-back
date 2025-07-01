@@ -231,16 +231,48 @@ export class CursosService {
     else if (diff > 1) reintegro = 0.7;
     else if (diff >= 0) reintegro = 0.5;
 
+    /*const precioCurso = parseFloat(inscripcion.cronograma.curso.precio as any);
+    const montoReintegro = parseFloat((reintegro * precioCurso).toFixed(2));*/
+
+
     const precioCurso = parseFloat(inscripcion.cronograma.curso.precio as any);
+    if (isNaN(precioCurso)) {
+      throw new BadRequestException('El precio del curso no es un número válido.');
+    }
+
+
     const montoReintegro = parseFloat((reintegro * precioCurso).toFixed(2));
+    if (isNaN(montoReintegro)) {
+        throw new BadRequestException('Error en el cálculo del monto de reintegro.');
+    }
 
     if (reintegro > 0) {
-      // Sumar el reintegro a la cuenta corriente
-      const cuentaActual = parseFloat(alumno.cuentaCorriente as any);
-      alumno.cuentaCorriente = parseFloat((cuentaActual + montoReintegro).toFixed(2));
+      let cuentaActual: number;
+      if (
+        alumno.cuentaCorriente === null ||
+        alumno.cuentaCorriente === undefined ||
+        (typeof alumno.cuentaCorriente === 'string' && (alumno.cuentaCorriente as string).trim() === '')
+      ) {
+          cuentaActual = 0;
+      } else {
+          cuentaActual = parseFloat(alumno.cuentaCorriente as any);
+          if (isNaN(cuentaActual)) {
+              // Si aún después de intentar parsear, es NaN (ej. si era "abc")
+              cuentaActual = 0;
+              console.warn('El valor de cuentaCorriente del alumno no es un número válido y se inicializó a 0.');
+          }
+      }
+
+
+      const nuevoSaldoCrudo = cuentaActual + montoReintegro;
+
+
+      alumno.cuentaCorriente = parseFloat(nuevoSaldoCrudo.toFixed(2));
+
+
       await this.alumnoRepo.save(alumno);
 
-      // Registrar pago como reintegro
+
       await this.pagoRepo.save(this.pagoRepo.create({
         alumno,
         inscripcion,
@@ -248,6 +280,7 @@ export class CursosService {
         tipo: 'reintegro',
         medioPago: null,
         descripcion: `Reintegro por baja de inscripción al curso ${inscripcion.cronograma.curso.nombre} - ${inscripcion.cronograma.sede.nombreSede}`,
+        fecha: new Date(),
       }));
     }
 
