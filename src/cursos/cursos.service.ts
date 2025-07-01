@@ -269,6 +269,8 @@ export class CursosService {
 
       alumno.cuentaCorriente = parseFloat(nuevoSaldoCrudo.toFixed(2));
 
+      console.log(`Nuevo saldo de cuentaCorriente: ${alumno.cuentaCorriente}`);
+
 
       await this.alumnoRepo.save(alumno);
 

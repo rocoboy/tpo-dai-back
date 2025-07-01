@@ -42,8 +42,8 @@ export class AlumnosController {
   @Get('account-status')
   @ApiOperation({ summary: 'Ver estado de cuenta corriente del alumno autenticado' })
   estadoCuenta(@Req() req) {
-    const idAlumno = req.user.idAlumno;
-    return this.alumnosService.estadoCuenta(idAlumno);
+    const idUsuario = req.user.idUsuario;
+    return this.alumnosService.estadoCuenta(idUsuario);
   }
 
 

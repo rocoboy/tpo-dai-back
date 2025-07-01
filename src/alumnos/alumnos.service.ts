@@ -72,6 +72,7 @@ constructor(
     if (!alumno) throw new NotFoundException('Alumno no encontrado');
     return { cuentaCorriente: alumno.cuentaCorriente };
   }  
+  
   async pagosRealizados(idUser: number) {
     const pagos = await this.pagoRepo.find({
       where: { alumno: { idAlumno : idUser} },
