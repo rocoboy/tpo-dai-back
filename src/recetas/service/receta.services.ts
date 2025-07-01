@@ -185,7 +185,7 @@ export class RecipeService {
               paso,
               tipo_contenido: media.tipo_contenido,
               urlContenido: media.path,
-              extension: media.path.split('.').pop() || '',
+              extension: media.extension,
             });
           }
         }

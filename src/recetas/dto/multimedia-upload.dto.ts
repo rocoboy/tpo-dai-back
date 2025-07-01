@@ -9,4 +9,8 @@ export class MultimediaUploadDto {
   @ApiProperty({ example: 'recetas/paso1.jpg', description: 'Ruta del archivo en Supabase' })
   @IsString()
   path: string;
+
+  @ApiProperty({ example: 'image/jpeg', description: 'Tipo de contenido del archivo' })
+  @IsString()
+  extension: string;
 }
