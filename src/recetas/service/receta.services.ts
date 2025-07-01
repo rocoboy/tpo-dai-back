@@ -360,7 +360,7 @@ export class RecipeService {
     }));
   }
 
-  async deleteRecipe(idReceta: string, req: Request): Promise<void> {
+  async deleteRecipe(idReceta: string, userId: number): Promise<void> {
     const receta = await this.recetaRepo.findOne({
       where: { idReceta },
       relations: ['usuario'],
@@ -370,14 +370,13 @@ export class RecipeService {
       throw new NotFoundException('Receta no encontrada');
     }
 
-    const userId = (req as any).user.idUsuario;
-
     if (receta.usuario.idUsuario !== userId) {
       throw new ForbiddenException('No tenés permisos para borrar esta receta');
     }
 
     await this.recetaRepo.delete(idReceta);
   }
+
 
   async getLast3Recipes(): Promise<RecetaResponseDto[]> {
   const recetas = await this.recetaRepo.find({

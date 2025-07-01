@@ -12,7 +12,7 @@ export class Foto {
   @ApiProperty({ example: 'uuid', description: 'Identificador único de la foto' })
   idFoto: string;
 
-  @ManyToOne(() => Receta, (receta) => receta.fotos, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Receta, (receta) => receta.fotos, { onDelete: 'CASCADE', eager: true, cascade: true })
   @ApiProperty({ description: 'Receta a la que pertenece la foto', type: () => Receta })
   receta: Receta;
 
