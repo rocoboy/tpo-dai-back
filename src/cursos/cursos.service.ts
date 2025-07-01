@@ -347,6 +347,17 @@ export class CursosService {
     const horaFinClase = hFin + mFin / 60;
     const margen = 0.5;
 
+ 
+
+    console.log('ahoraLocal:', ahoraLocal);
+    console.log('horaInicioClase:', horaInicioClase);
+    console.log('horaFinClase:', horaFinClase);
+    console.log('claseDeHoy.tema:', claseDeHoy.tema);
+    console.log('claseDeHoy.fecha:', claseDeHoy.fecha.toISOString());
+    console.log('claseDeHoy.horaInicio:', claseDeHoy.horaInicio);
+    console.log('claseDeHoy.horaFin:', claseDeHoy.horaFin);
+    console.log('------------------------');
+
     if (ahoraLocal < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
     }
