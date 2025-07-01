@@ -91,9 +91,7 @@ export class RecipeService {
     }
   }
 
-  async createRecipe(dto: CreateRecetaDto, userId: number, operationType: string) {
-    this.validateCreateRecetaDto(dto);
-
+  async createRecipe(dto: CreateRecetaDto, userId: number, opertationType: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -101,6 +99,7 @@ export class RecipeService {
     let tipo: TipoReceta;
 
     try {
+      // Validaciones iniciales antes de iniciar la transacción
       usuario = await queryRunner.manager.findOneOrFail(Usuario, {
         where: { idUsuario: userId },
       });
@@ -118,6 +117,11 @@ export class RecipeService {
         throw new BadRequestException('Ya tienes una receta con ese nombre. Puedes reemplazarla o editarla.');
       }
 
+      if (dto.porciones <= 0 || dto.cantidadPersonas <= 0) {
+        throw new BadRequestException('Las porciones y la cantidad de personas deben ser mayores a cero.');
+      }
+
+      // Iniciar transacción después de validaciones
       await queryRunner.startTransaction();
 
       const receta = queryRunner.manager.create(Receta, {
@@ -133,6 +137,9 @@ export class RecipeService {
       const savedRecipe = await queryRunner.manager.save(Receta, receta);
 
       for (const foto of dto.fotos) {
+        if (!foto.path || !foto.extension) {
+          throw new BadRequestException('Cada foto debe tener path y extensión');
+        }
         await queryRunner.manager.save(Foto, {
           receta: savedRecipe,
           url: foto.path,
@@ -147,14 +154,15 @@ export class RecipeService {
         if (!ingrediente) {
           throw new BadRequestException('Ingrediente inválido');
         }
-
         const unidad = await queryRunner.manager.findOne(Unidad, {
           where: { idUnidad: ing.idUnidad },
         });
         if (!unidad) {
           throw new BadRequestException('Unidad inválida');
         }
-
+        if (ing.cantidad <= 0) {
+          throw new BadRequestException('La cantidad de cada ingrediente debe ser mayor a cero.');
+        }
         await queryRunner.manager.save(Utilizado, {
           receta: savedRecipe,
           ingrediente,
@@ -173,10 +181,6 @@ export class RecipeService {
 
         if (pasoDto.multimedia?.length) {
           for (const media of pasoDto.multimedia) {
-            if (!media.path || typeof media.path !== 'string') {
-              throw new BadRequestException('Cada archivo multimedia debe tener un path válido.');
-            }
-
             await queryRunner.manager.save(Multimedia, {
               paso,
               tipo_contenido: media.tipo_contenido,
@@ -189,92 +193,30 @@ export class RecipeService {
 
       await queryRunner.commitTransaction();
 
-      const message =
-        operationType === 'replace'
-          ? 'Receta reemplazada correctamente y está pendiente de aprobación'
-          : operationType === 'edit'
-          ? 'Receta editada correctamente y está pendiente de aprobación'
-          : 'Receta creada correctamente y está pendiente de aprobación';
+      let message = '';
+      if (opertationType === 'replace') {
+        message = 'Receta reemplazada correctamente y está pendiente de aprobación';
+      } else if (opertationType === 'edit') {
+        message = 'Receta editada correctamente y está pendiente de aprobación';
+      } else {
+        message = 'Receta creada correctamente y está pendiente de aprobación';
+      }
 
       return { message, receta: savedRecipe };
+
     } catch (error) {
       if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch (rollbackError) {
+          console.error('Error al hacer rollback de la transacción:', rollbackError);
+        }
       }
       throw error;
     } finally {
       await queryRunner.release();
     }
-  }
-
-  private validateCreateRecetaDto(dto: CreateRecetaDto) {
-    if (!dto.nombreReceta || typeof dto.nombreReceta !== 'string') {
-      throw new BadRequestException('El nombre de la receta es obligatorio.');
-    }
-
-    if (!dto.descripcionReceta || typeof dto.descripcionReceta !== 'string') {
-      throw new BadRequestException('La descripción de la receta es obligatoria.');
-    }
-
-    if (!dto.porciones || dto.porciones <= 0) {
-      throw new BadRequestException('Las porciones deben ser mayores a cero.');
-    }
-
-    if (!dto.cantidadPersonas || dto.cantidadPersonas <= 0) {
-      throw new BadRequestException('La cantidad de personas debe ser mayor a cero.');
-    }
-
-    if (!dto.idTipo || typeof dto.idTipo !== 'number') {
-      throw new BadRequestException('El tipo de receta es obligatorio.');
-    }
-
-    if (!Array.isArray(dto.fotos)) {
-      throw new BadRequestException('Las fotos deben enviarse como un array.');
-    }
-
-    for (const foto of dto.fotos) {
-      if (!foto.path || !foto.extension) {
-        throw new BadRequestException('Cada foto debe tener un path y una extensión.');
-      }
-    }
-
-    if (!Array.isArray(dto.utilizados) || dto.utilizados.length === 0) {
-      throw new BadRequestException('Debe incluir al menos un ingrediente utilizado.');
-    }
-
-    for (const ing of dto.utilizados) {
-      if (!ing.idIngrediente || !ing.idUnidad) {
-        throw new BadRequestException('Cada ingrediente debe tener idIngrediente e idUnidad.');
-      }
-      if (typeof ing.cantidad !== 'number' || ing.cantidad <= 0) {
-        throw new BadRequestException('La cantidad del ingrediente debe ser un número mayor a cero.');
-      }
-    }
-
-    if (!Array.isArray(dto.pasos) || dto.pasos.length === 0) {
-      throw new BadRequestException('Debe incluir al menos un paso.');
-    }
-
-    for (const paso of dto.pasos) {
-      if (typeof paso.nroPaso !== 'number') {
-        throw new BadRequestException('Cada paso debe tener un número de paso válido.');
-      }
-      if (!paso.texto || typeof paso.texto !== 'string') {
-        throw new BadRequestException('Cada paso debe tener una descripción.');
-      }
-
-      if (paso.multimedia && Array.isArray(paso.multimedia)) {
-        for (const media of paso.multimedia) {
-          if (!media.path || typeof media.path !== 'string') {
-            throw new BadRequestException('Cada archivo multimedia debe tener un path válido.');
-          }
-          if (!media.tipo_contenido) {
-            throw new BadRequestException('Cada archivo multimedia debe tener un tipo de contenido.');
-          }
-        }
-      }
-    }
-  }
+  } 
 
   async approveRecipe(idReceta: string): Promise<Receta> {
     const receta = await this.recetaRepo.findOneBy({ idReceta });
