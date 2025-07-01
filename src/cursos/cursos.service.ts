@@ -12,6 +12,7 @@ import { RegistrarAsistenciaDto } from './dto/registrar-asistencia.dto';
 import { Alumno } from '../alumnos/entities/alumno.entity';
 import { PagoAlumno } from './entities/pagosAlumno.entity';
 import { MailService } from 'src/mail/mail.service';
+import { DateTime } from 'luxon';
 
 @Injectable()
 export class CursosService {
@@ -315,7 +316,11 @@ export class CursosService {
     dto: RegistrarAsistenciaDto,
     idUsuario: number,
   ) {
-    const hoy = new Date();
+    // 1. Obtener la fecha y hora actual en la zona horaria de Argentina
+    // La zona horaria para Buenos Aires es "America/Argentina/Buenos_Aires"
+    const nowInArgentina = DateTime.now().setZone('America/Argentina/Buenos_Aires');
+    const hoyArgentina = nowInArgentina.startOf('day'); // El inicio del día en Argentina
+    const ahoraMinutosArgentina = nowInArgentina.hour + nowInArgentina.minute / 60;
 
     const alumno = await this.alumnoRepo.findOne({
       where: { idAlumno: idUsuario },
@@ -333,61 +338,66 @@ export class CursosService {
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada o inactiva');
 
+    // 2. Buscar si hay clase hoy, convirtiendo la fecha de la clase a la zona horaria de Argentina para la comparación
+    const claseDeHoy = inscripcion.cronograma.clases.find((c) => {
+      // Las fechas de las clases en la DB (timestamp without time zone) deben ser interpretadas como Argentina
+      // y luego comparadas con el `hoyArgentina` (también en Argentina).
+      const claseFechaEnArgentina = DateTime.fromISO(c.fecha.toISOString().split('T')[0], {
+        zone: 'America/Argentina/Buenos_Aires',
+      }).startOf('day');
 
-    const hoyArgentina = new Date(hoy.getTime() - 3 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
+      return claseFechaEnArgentina.equals(hoyArgentina);
+    });
 
-
-    const claseDeHoy = inscripcion.cronograma.clases.find(
-      (c) => c.fecha.toISOString().split('T')[0] === hoyArgentina
-    );
     if (!claseDeHoy) throw new NotFoundException('No hay clase registrada para hoy');
 
-    const ahoraLocal = (hoy.getUTCHours() - 3) + hoy.getUTCMinutes() / 60;
-
+    // 3. Validar horario actual dentro del horario de clase
     const [hIni, mIni] = claseDeHoy.horaInicio.split(':').map(Number);
     const [hFin, mFin] = claseDeHoy.horaFin.split(':').map(Number);
     const horaInicioClase = hIni + mIni / 60;
     const horaFinClase = hFin + mFin / 60;
     const margen = 0.5; // media hora extra para registrar
 
-    //Validación de tiempo
-    if (ahoraLocal < horaInicioClase) {
+    // Usamos `ahoraMinutosArgentina` para la comparación de horario
+    if (ahoraMinutosArgentina < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
     }
-    if (ahoraLocal > horaFinClase + margen) {
+    if (ahoraMinutosArgentina > horaFinClase + margen) {
       throw new BadRequestException('Ya pasó el horario permitido para registrar asistencia');
     }
 
-    // ✅ Validar asistencia previa hoy
-    const startOfDay = new Date(hoy);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(hoy);
-    endOfDay.setHours(23, 59, 59, 999);
+    // 4. Verificar que no haya ya asistencia para hoy
+
+    const startOfDayUTC = hoyArgentina.toJSDate(); 
+    const endOfDayUTC = hoyArgentina.endOf('day').toJSDate();
 
     const yaAsistio = await this.asistenciaRepo.count({
       where: {
         inscripcion: { idInscripcion: inscripcion.idInscripcion },
-        fecha: Between(startOfDay, endOfDay),
+
+        fecha: Between(startOfDayUTC, endOfDayUTC),
       },
     });
+
     if (yaAsistio > 0) {
       throw new BadRequestException('Ya registraste asistencia para esta clase');
     }
 
-    // Crear asistencia
+    // 5. Registrar la asistencia
     const asistencia = this.asistenciaRepo.create({
       inscripcion: { idInscripcion: inscripcion.idInscripcion },
-      fecha: hoy,
+      fecha: nowInArgentina.toJSDate(), // Guarda la fecha y hora actual de Argentina
       presente: dto.presente,
     });
     await this.asistenciaRepo.save(asistencia);
 
-    // Calcular porcentaje
-    const clasesPasadas = inscripcion.cronograma.clases.filter(
-      (c) => new Date(c.fecha) <= hoy
-    );
+    // 6. Calcular porcentaje
+    const clasesPasadas = inscripcion.cronograma.clases.filter((c) => {
+      const claseFechaEnArgentina = DateTime.fromISO(c.fecha.toISOString().split('T')[0], {
+        zone: 'America/Argentina/Buenos_Aires',
+      }).startOf('day');
+      return claseFechaEnArgentina <= hoyArgentina;
+    });
 
     const asistenciasPresentes = await this.asistenciaRepo.count({
       where: {
@@ -405,12 +415,16 @@ export class CursosService {
       await this.inscripcionRepo.save(inscripcion);
     }
 
-    // Finalizar inscripción si es última clase
+    // 7. Si la clase de hoy es la última y está presente => finalizar inscripción
     const clasesOrdenadas = inscripcion.cronograma.clases
       .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
     const ultimaClase = clasesOrdenadas[clasesOrdenadas.length - 1];
-    const esUltimaClaseHoy = ultimaClase.fecha.toISOString().split('T')[0] === hoyArgentina;
+    const ultimaClaseFechaEnArgentina = DateTime.fromISO(ultimaClase.fecha.toISOString().split('T')[0], {
+      zone: 'America/Argentina/Buenos_Aires',
+    }).startOf('day');
+
+    const esUltimaClaseHoy = ultimaClaseFechaEnArgentina.equals(hoyArgentina);
 
     if (esUltimaClaseHoy && dto.presente) {
       inscripcion.status = 'finalizada';
@@ -423,7 +437,6 @@ export class CursosService {
       asistencia,
     };
   }
-
 
   async historialAsistencias(idCronograma: string, idUsuario: number) {
     const inscripcion = await this.inscripcionRepo.findOne({
