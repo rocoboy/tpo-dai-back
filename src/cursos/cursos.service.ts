@@ -333,40 +333,26 @@ export class CursosService {
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada o inactiva');
 
-    // 🔁 Ajuste de fecha a UTC-3
+
     const hoyArgentina = new Date(hoy.getTime() - 3 * 60 * 60 * 1000)
       .toISOString()
       .split('T')[0];
 
+
     const claseDeHoy = inscripcion.cronograma.clases.find(
-      (c) => new Date(c.fecha.getTime() - 3 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0] === hoyArgentina
+      (c) => c.fecha.toISOString().split('T')[0] === hoyArgentina
     );
     if (!claseDeHoy) throw new NotFoundException('No hay clase registrada para hoy');
 
-    // 🔁 Ajuste de hora a UTC-3
     const ahoraLocal = (hoy.getUTCHours() - 3) + hoy.getUTCMinutes() / 60;
 
     const [hIni, mIni] = claseDeHoy.horaInicio.split(':').map(Number);
     const [hFin, mFin] = claseDeHoy.horaFin.split(':').map(Number);
     const horaInicioClase = hIni + mIni / 60;
     const horaFinClase = hFin + mFin / 60;
-    const margen = 0.5;
+    const margen = 0.5; // media hora extra para registrar
 
-    // 🧪 LOGS
-    console.log('--- ASISTENCIA DEBUG ---');
-    console.log('Fecha actual UTC:', hoy.toISOString());
-    console.log('Fecha hoy Argentina:', hoyArgentina);
-    console.log('Clase encontrada:', claseDeHoy.tema);
-    console.log('Fecha clase ajustada:', new Date(claseDeHoy.fecha.getTime() - 3 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    console.log('horaInicioClase:', horaInicioClase);
-    console.log('horaFinClase:', horaFinClase);
-    console.log('ahoraLocal:', ahoraLocal);
-    console.log('horaInicio (raw):', claseDeHoy.horaInicio);
-    console.log('horaFin (raw):', claseDeHoy.horaFin);
-    console.log('-------------------------');
-
+    //Validación de tiempo
     if (ahoraLocal < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
     }
@@ -374,6 +360,7 @@ export class CursosService {
       throw new BadRequestException('Ya pasó el horario permitido para registrar asistencia');
     }
 
+    // ✅ Validar asistencia previa hoy
     const startOfDay = new Date(hoy);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(hoy);
@@ -389,6 +376,7 @@ export class CursosService {
       throw new BadRequestException('Ya registraste asistencia para esta clase');
     }
 
+    // Crear asistencia
     const asistencia = this.asistenciaRepo.create({
       inscripcion: { idInscripcion: inscripcion.idInscripcion },
       fecha: hoy,
@@ -396,6 +384,7 @@ export class CursosService {
     });
     await this.asistenciaRepo.save(asistencia);
 
+    // Calcular porcentaje
     const clasesPasadas = inscripcion.cronograma.clases.filter(
       (c) => new Date(c.fecha) <= hoy
     );
@@ -416,13 +405,12 @@ export class CursosService {
       await this.inscripcionRepo.save(inscripcion);
     }
 
+    // Finalizar inscripción si es última clase
     const clasesOrdenadas = inscripcion.cronograma.clases
       .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
     const ultimaClase = clasesOrdenadas[clasesOrdenadas.length - 1];
-    const esUltimaClaseHoy = new Date(ultimaClase.fecha.getTime() - 3 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0] === hoyArgentina;
+    const esUltimaClaseHoy = ultimaClase.fecha.toISOString().split('T')[0] === hoyArgentina;
 
     if (esUltimaClaseHoy && dto.presente) {
       inscripcion.status = 'finalizada';
@@ -435,6 +423,7 @@ export class CursosService {
       asistencia,
     };
   }
+
 
   async historialAsistencias(idCronograma: string, idUsuario: number) {
     const inscripcion = await this.inscripcionRepo.findOne({
