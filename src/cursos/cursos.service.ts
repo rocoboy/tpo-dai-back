@@ -333,28 +333,27 @@ export class CursosService {
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada o inactiva');
 
-    // Buscar si hay clase hoy
     const claseDeHoy = inscripcion.cronograma.clases.find(
       (c) => c.fecha.toISOString().split('T')[0] === hoy.toISOString().split('T')[0],
     );
     if (!claseDeHoy) throw new NotFoundException('No hay clase registrada para hoy');
 
-    // Validar horario actual dentro del horario de clase
-    const ahora = hoy.getHours() + hoy.getMinutes() / 60;
+    // 🔁 Ajustar hora actual a UTC-3
+    const ahoraLocal = (hoy.getUTCHours() - 3) + hoy.getUTCMinutes() / 60;
+
     const [hIni, mIni] = claseDeHoy.horaInicio.split(':').map(Number);
     const [hFin, mFin] = claseDeHoy.horaFin.split(':').map(Number);
     const horaInicioClase = hIni + mIni / 60;
     const horaFinClase = hFin + mFin / 60;
-    const margen = 0.5; // media hora extra para registrar
+    const margen = 0.5;
 
-    if (ahora < horaInicioClase) {
+    if (ahoraLocal < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
     }
-    if (ahora > horaFinClase + margen) {
+    if (ahoraLocal > horaFinClase + margen) {
       throw new BadRequestException('Ya pasó el horario permitido para registrar asistencia');
     }
 
-    // Verificar que no haya ya asistencia para hoy
     const startOfDay = new Date(hoy);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(hoy);
@@ -370,7 +369,6 @@ export class CursosService {
       throw new BadRequestException('Ya registraste asistencia para esta clase');
     }
 
-    // Registrar la asistencia
     const asistencia = this.asistenciaRepo.create({
       inscripcion: { idInscripcion: inscripcion.idInscripcion },
       fecha: hoy,
@@ -378,7 +376,6 @@ export class CursosService {
     });
     await this.asistenciaRepo.save(asistencia);
 
-    // Calcular porcentaje
     const clasesPasadas = inscripcion.cronograma.clases.filter(
       (c) => new Date(c.fecha) <= hoy,
     );
@@ -399,7 +396,6 @@ export class CursosService {
       await this.inscripcionRepo.save(inscripcion);
     }
 
-    // Si la clase de hoy es la última y está presente => finalizar inscripción
     const clasesOrdenadas = inscripcion.cronograma.clases
       .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
