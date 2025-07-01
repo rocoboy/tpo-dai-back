@@ -28,14 +28,14 @@ export class AlumnosController {
   @Get('profile')
   @ApiOperation({ summary: 'Datos del alumno autenticado' })
   profile(@Req() req) {
-    const idAlumno = req.user.idAlumno;
+    const idAlumno = req.user.idUsuario;
     return this.alumnosService.getProfile(idAlumno);
   }
 
   @Put('updateProfile')
   @ApiOperation({ summary: 'Actualizar datos del alumno autenticado' })
   updateProfile(@Req() req, @Body() dto: CreateAlumnoDto) {
-    const idAlumno = req.user.idAlumno;
+    const idAlumno = req.user.idUsuario;
     return this.alumnosService.update(idAlumno, dto);
   }
   
