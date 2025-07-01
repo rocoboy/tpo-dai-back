@@ -15,7 +15,7 @@ export class Utilizado {
   idUtilizado: string;
 
   /** Receta asociada */
-  @ManyToOne(() => Receta, (receta) => receta.utilizados)
+  @ManyToOne(() => Receta, (receta) => receta.utilizados , {onDelete: 'CASCADE'})
   @ApiProperty({ description: 'Receta asociada', type: () => Receta })
   receta: Receta;
 

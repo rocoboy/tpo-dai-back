@@ -11,7 +11,7 @@ export class Calificacion {
   @ApiProperty({ example: 'uuid', description: 'Identificador único de la calificación' })
   idCalificacion: string;
 
-  @ManyToOne(() => Receta, (receta) => receta.calificaciones, {cascade: true, eager: true, onDelete: 'CASCADE'})
+  @ManyToOne(() => Receta, (receta) => receta.calificaciones)
   @ApiProperty({ description: 'Receta calificada', type: () => Receta })
   receta: Receta;
 

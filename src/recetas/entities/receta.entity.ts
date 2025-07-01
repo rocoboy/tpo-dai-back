@@ -54,22 +54,22 @@ export class Receta {
   tipoReceta: TipoReceta;
 
   /** Pasos de la receta */
-  @OneToMany(() => Paso, (paso) => paso.receta, { cascade: true, eager: true , onDelete: 'CASCADE' })
+  @OneToMany(() => Paso, (paso) => paso.receta, { cascade: true, eager: true })
   @ApiProperty({ description: 'Pasos de la receta', type: () => [Paso] })
   pasos: Paso[];
   
   /** Calificaciones de la receta */
-  @OneToMany(() => Calificacion, (calificacion) => calificacion.receta, { cascade: true, eager: true , onDelete: 'CASCADE' })
+  @OneToMany(() => Calificacion, (calificacion) => calificacion.receta, { cascade: true, eager: true})
   @ApiProperty({ description: 'Calificaciones de la receta', type: () => [Calificacion] })
   calificaciones: Calificacion[];
 
   /** Ingredientes utilizados en la receta */
-  @OneToMany(() => Utilizado, (utilizado) => utilizado.receta, { cascade: true, eager: true, onDelete: 'CASCADE' })
+  @OneToMany(() => Utilizado, (utilizado) => utilizado.receta, { cascade: true, eager: true})
   @ApiProperty({ description: 'Ingredientes utilizados en la receta', type: () => [Utilizado] })
   utilizados: Utilizado[];
 
   /** Fotos asociadas a la receta */
-  @OneToMany(() => Foto, (foto) => foto.receta, { cascade: true, eager: true , onDelete: 'CASCADE' })
+  @OneToMany(() => Foto, (foto) => foto.receta, { cascade: true, eager: true})
   @ApiProperty({ description: 'Fotos asociadas a la receta', type: () => [Foto] })
   fotos: Foto[];
 
