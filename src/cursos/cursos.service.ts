@@ -333,7 +333,7 @@ export class CursosService {
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada o inactiva');
 
-    // 🔁 Ajustar fecha actual a UTC-3 (solo parte "YYYY-MM-DD")
+    // 🔁 Ajuste de fecha a UTC-3
     const hoyArgentina = new Date(hoy.getTime() - 3 * 60 * 60 * 1000)
       .toISOString()
       .split('T')[0];
@@ -345,7 +345,7 @@ export class CursosService {
     );
     if (!claseDeHoy) throw new NotFoundException('No hay clase registrada para hoy');
 
-    
+    // 🔁 Ajuste de hora a UTC-3
     const ahoraLocal = (hoy.getUTCHours() - 3) + hoy.getUTCMinutes() / 60;
 
     const [hIni, mIni] = claseDeHoy.horaInicio.split(':').map(Number);
@@ -353,6 +353,19 @@ export class CursosService {
     const horaInicioClase = hIni + mIni / 60;
     const horaFinClase = hFin + mFin / 60;
     const margen = 0.5;
+
+    // 🧪 LOGS
+    console.log('--- ASISTENCIA DEBUG ---');
+    console.log('Fecha actual UTC:', hoy.toISOString());
+    console.log('Fecha hoy Argentina:', hoyArgentina);
+    console.log('Clase encontrada:', claseDeHoy.tema);
+    console.log('Fecha clase ajustada:', new Date(claseDeHoy.fecha.getTime() - 3 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    console.log('horaInicioClase:', horaInicioClase);
+    console.log('horaFinClase:', horaFinClase);
+    console.log('ahoraLocal:', ahoraLocal);
+    console.log('horaInicio (raw):', claseDeHoy.horaInicio);
+    console.log('horaFin (raw):', claseDeHoy.horaFin);
+    console.log('-------------------------');
 
     if (ahoraLocal < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
