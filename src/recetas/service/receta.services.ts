@@ -292,6 +292,7 @@ export class RecipeService {
       porciones: receta.porciones,
       imagen: receta.fotos?.[0]?.url || '',
       promedioCalificacion: receta.promedioCalificacion,
+      fechaReceta:receta.fechaCreacion.toISOString().split('T')[0],
     }));
   
   }
@@ -357,6 +358,7 @@ export class RecipeService {
       porciones: r.porciones,
       imagen: r.fotos?.[0]?.url || '',
       promedioCalificacion: r.promedioCalificacion,
+      fechaReceta: r.fechaCreacion.toISOString().split('T')[0],
     }));
   }
 
