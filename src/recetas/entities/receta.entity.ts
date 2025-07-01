@@ -59,17 +59,17 @@ export class Receta {
   pasos: Paso[];
   
   /** Calificaciones de la receta */
-  @OneToMany(() => Calificacion, (calificacion) => calificacion.receta)
+  @OneToMany(() => Calificacion, (calificacion) => calificacion.receta, { cascade: true, eager: true })
   @ApiProperty({ description: 'Calificaciones de la receta', type: () => [Calificacion] })
   calificaciones: Calificacion[];
 
   /** Ingredientes utilizados en la receta */
-  @OneToMany(() => Utilizado, (utilizado) => utilizado.receta)
+  @OneToMany(() => Utilizado, (utilizado) => utilizado.receta, { cascade: true, eager: true })
   @ApiProperty({ description: 'Ingredientes utilizados en la receta', type: () => [Utilizado] })
   utilizados: Utilizado[];
 
   /** Fotos asociadas a la receta */
-  @OneToMany(() => Foto, (foto) => foto.receta)
+  @OneToMany(() => Foto, (foto) => foto.receta, { cascade: true, eager: true })
   @ApiProperty({ description: 'Fotos asociadas a la receta', type: () => [Foto] })
   fotos: Foto[];
 

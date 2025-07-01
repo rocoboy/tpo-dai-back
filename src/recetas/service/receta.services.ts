@@ -94,14 +94,17 @@ export class RecipeService {
   async createRecipe(dto: CreateRecetaDto, userId: number, opertationType: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
-    await queryRunner.startTransaction();
+
+    let usuario: Usuario;
+    let tipo: TipoReceta;
 
     try {
-      const usuario = await queryRunner.manager.findOneOrFail(Usuario, {
+      // Validaciones iniciales antes de iniciar la transacción
+      usuario = await queryRunner.manager.findOneOrFail(Usuario, {
         where: { idUsuario: userId },
       });
 
-      const tipo = await queryRunner.manager.findOneOrFail(TipoReceta, {
+      tipo = await queryRunner.manager.findOneOrFail(TipoReceta, {
         where: { idTipo: dto.idTipo },
       });
 
@@ -110,17 +113,16 @@ export class RecipeService {
         relations: ['usuario'],
       });
 
-
-
       if (existingRecipe) {
-        await queryRunner.rollbackTransaction();
         throw new BadRequestException('Ya tienes una receta con ese nombre. Puedes reemplazarla o editarla.');
       }
 
       if (dto.porciones <= 0 || dto.cantidadPersonas <= 0) {
-        await queryRunner.rollbackTransaction();
         throw new BadRequestException('Las porciones y la cantidad de personas deben ser mayores a cero.');
       }
+
+      // Iniciar transacción después de validaciones
+      await queryRunner.startTransaction();
 
       const receta = queryRunner.manager.create(Receta, {
         nombreReceta: dto.nombreReceta,
@@ -129,7 +131,7 @@ export class RecipeService {
         cantidadPersonas: dto.cantidadPersonas,
         tipoReceta: tipo,
         usuario,
-        estado: EstadoReceta.PENDIENTE
+        estado: EstadoReceta.PENDIENTE,
       });
 
       const savedRecipe = await queryRunner.manager.save(Receta, receta);
@@ -176,6 +178,7 @@ export class RecipeService {
           nroPaso: pasoDto.nroPaso,
           texto: pasoDto.texto,
         });
+
         if (pasoDto.multimedia?.length) {
           for (const media of pasoDto.multimedia) {
             await queryRunner.manager.save(Multimedia, {
@@ -189,8 +192,8 @@ export class RecipeService {
       }
 
       await queryRunner.commitTransaction();
-      let message = '';
 
+      let message = '';
       if (opertationType === 'replace') {
         message = 'Receta reemplazada correctamente y está pendiente de aprobación';
       } else if (opertationType === 'edit') {
@@ -198,10 +201,17 @@ export class RecipeService {
       } else {
         message = 'Receta creada correctamente y está pendiente de aprobación';
       }
+
       return { message, receta: savedRecipe };
 
     } catch (error) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch (rollbackError) {
+          console.error('Error al hacer rollback de la transacción:', rollbackError);
+        }
+      }
       throw error;
     } finally {
       await queryRunner.release();
