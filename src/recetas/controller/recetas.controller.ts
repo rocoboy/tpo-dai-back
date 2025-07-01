@@ -71,6 +71,15 @@ export class RecetasController {
     return this.recipeService.getTop3Recipes();
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('myRecipes')
+  @ApiOperation({ summary: 'Obtener recetas del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Listado de recetas del usuario.' })
+  async getMyRecipes(@Req() req: Request) {
+    const userId = (req as any).user.idUsuario;
+    return this.userRecipesService.getRecipesByUserID(userId);
+  }
+
   @Get('lasts')
   @ApiOperation({ summary: 'Obtener las 3 recetas más recientes' })
   @ApiResponse({ status: 200, description: 'Últimas 3 recetas cargadas.' })
