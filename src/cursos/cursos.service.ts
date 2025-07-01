@@ -333,12 +333,19 @@ export class CursosService {
     });
     if (!inscripcion) throw new NotFoundException('Inscripción no encontrada o inactiva');
 
+    // 🔁 Ajustar fecha actual a UTC-3 (solo parte "YYYY-MM-DD")
+    const hoyArgentina = new Date(hoy.getTime() - 3 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+
     const claseDeHoy = inscripcion.cronograma.clases.find(
-      (c) => c.fecha.toISOString().split('T')[0] === hoy.toISOString().split('T')[0],
+      (c) => new Date(c.fecha.getTime() - 3 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0] === hoyArgentina
     );
     if (!claseDeHoy) throw new NotFoundException('No hay clase registrada para hoy');
 
-    // 🔁 Ajustar hora actual a UTC-3
+    
     const ahoraLocal = (hoy.getUTCHours() - 3) + hoy.getUTCMinutes() / 60;
 
     const [hIni, mIni] = claseDeHoy.horaInicio.split(':').map(Number);
@@ -346,17 +353,6 @@ export class CursosService {
     const horaInicioClase = hIni + mIni / 60;
     const horaFinClase = hFin + mFin / 60;
     const margen = 0.5;
-
- 
-
-    console.log('ahoraLocal:', ahoraLocal);
-    console.log('horaInicioClase:', horaInicioClase);
-    console.log('horaFinClase:', horaFinClase);
-    console.log('claseDeHoy.tema:', claseDeHoy.tema);
-    console.log('claseDeHoy.fecha:', claseDeHoy.fecha.toISOString());
-    console.log('claseDeHoy.horaInicio:', claseDeHoy.horaInicio);
-    console.log('claseDeHoy.horaFin:', claseDeHoy.horaFin);
-    console.log('------------------------');
 
     if (ahoraLocal < horaInicioClase) {
       throw new BadRequestException('La clase aún no comenzó');
@@ -388,7 +384,7 @@ export class CursosService {
     await this.asistenciaRepo.save(asistencia);
 
     const clasesPasadas = inscripcion.cronograma.clases.filter(
-      (c) => new Date(c.fecha) <= hoy,
+      (c) => new Date(c.fecha) <= hoy
     );
 
     const asistenciasPresentes = await this.asistenciaRepo.count({
@@ -411,7 +407,9 @@ export class CursosService {
       .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
     const ultimaClase = clasesOrdenadas[clasesOrdenadas.length - 1];
-    const esUltimaClaseHoy = ultimaClase.fecha.toISOString().split('T')[0] === hoy.toISOString().split('T')[0];
+    const esUltimaClaseHoy = new Date(ultimaClase.fecha.getTime() - 3 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0] === hoyArgentina;
 
     if (esUltimaClaseHoy && dto.presente) {
       inscripcion.status = 'finalizada';
